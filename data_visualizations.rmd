@@ -1,0 +1,317 @@
+---
+title: "Data Science and Analytics Assignment"
+author: "Luigui Gallardo-Becerra"
+date: "4/14/2022"
+output: pdf_document
+---
+
+```{r setup, include=FALSE, message=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library("dplyr")
+library("ggpubr")
+library("optparse")
+library("ggplot2")
+library("reshape")
+require("gridExtra")
+library("ggpubr")
+library("ggExtra")
+library("sqldf")
+library("ggmap")
+
+```
+
+## Data visualizations
+
+### What is the relationship between availability and price?
+
+First, we need to import our data (listings.csv) into R. As previously described, the "price" contains the "$" and "," symbols. It is easier to manage the data if we remove these characters.
+
+
+```{r, echo=FALSE, warning=FALSE, message=FALSE}
+# Data input (listings.csv)
+listings <- read.csv("dataset/listings.csv",
+                     header=TRUE)
+
+# Remotion of $ and , characters
+listings$price = gsub("\\$", "", listings$price)
+listings$price = gsub(",", "", listings$price)
+listings$price = as.numeric(listings$price)
+```
+
+
+The listins table provided has 4 columns of availability (availability the next 30, 60, 90, and 365 days) so we can obtain 4 different graphs.
+
+
+```{r, echo=FALSE, warning=FALSE, message=FALSE}
+theme_set(theme_classic())
+# Boxplot availability_30 vs price
+boxplot_availability_30 <- ggplot(listings,
+                                  aes(y = availability_30,
+                                      x = price,
+                                      colour = price)) +
+  geom_count(position = "jitter") +
+  geom_smooth(method = "lm") +
+  labs(y = "Availability", 
+       x = "Price ($)",
+       title = "Days available the next 30 days") +
+  theme(legend.position = "none",
+        title = element_text(size = 9))
+
+boxplot_availability_30 <- ggMarginal(boxplot_availability_30,
+                                      type = "histogram",
+                                      fill = "transparent")
+```
+
+
+```{r, echo=FALSE, warning=FALSE, message=FALSE}
+# Boxplot availability_60 vs price
+boxplot_availability_60 <- ggplot(listings,
+                                  aes(y = availability_60,
+                                      x = price,
+                                      colour = price)) +
+  geom_count(position = "jitter") +
+  geom_smooth(method = "lm") +
+  labs(y = "Availability", 
+       x = "Price ($)",
+       title = "Days available the next 60 days") +
+  theme(legend.position = "none",
+        title = element_text(size = 9))
+
+boxplot_availability_60 <- ggMarginal(boxplot_availability_60,
+                                      type = "histogram",
+                                      fill = "transparent")
+```
+
+
+```{r, echo=FALSE, warning=FALSE, message=FALSE}
+# Boxplot availability_90 vs price
+boxplot_availability_90 <- ggplot(listings,
+                                  aes(y = availability_90,
+                                      x = price,
+                                      colour = price)) +
+  geom_count(position = "jitter") +
+  geom_smooth(method = "lm") +
+  labs(y = "Availability", 
+       x = "Price ($)",
+       title = "Days available the next 90 days") +
+  theme(legend.position = "none",
+        title = element_text(size = 9))
+
+boxplot_availability_90 <- ggMarginal(boxplot_availability_90,
+                                      type = "histogram",
+                                      fill = "transparent")
+```
+
+
+```{r, echo=FALSE, warning=FALSE, message=FALSE}
+# Boxplot availability_365 vs price
+boxplot_availability_365 <- ggplot(listings,
+                                  aes(y = availability_365,
+                                      x = price,
+                                      colour = price)) +
+  geom_count(position = "jitter") +
+  geom_smooth(method = "lm") +
+  labs(y = "Availability", 
+       x = "Price ($)",
+       title = "Days available the next 365 days") +
+  theme(legend.position = "none",
+        title = element_text(size = 9))
+
+boxplot_availability_365 <- ggMarginal(boxplot_availability_365,
+                                       type = "histogram",
+                                       fill = "transparent")
+```
+
+
+```{r, echo=FALSE, warning=FALSE, message=FALSE}
+# Final Plot
+ggarrange(boxplot_availability_30,
+          boxplot_availability_60,
+          boxplot_availability_90,
+          boxplot_availability_365,
+          ncol = 2, nrow = 2)
+```
+
+
+\newpage
+
+### What is the relationship between season and availability?
+
+For this analysis we need the information of the calendar table. This includes the information of the availability during the year 2016 and the winter of 2016-2017, so first we need to group the information per season. Because of the size of the table, I decided to use SQL inside R.
+
+
+```{r, echo=FALSE, warning=FALSE, message=FALSE}
+# Data input (calendar.csv)
+calendar <- read.csv("dataset/calendar.csv",
+                     header=TRUE)
+
+# Remotion of $ and , characters
+calendar$price = gsub("\\$", "", calendar$price)
+calendar$price = gsub(",", "", calendar$price)
+calendar$price = as.numeric(calendar$price)
+
+# Creation of groups per season
+calendar_season <- sqldf("
+SELECT listing_id,
+    COUNT(date) AS availability,
+    CASE
+        WHEN date >= '2015-12-07' AND date <= '2016-03-30' THEN 'Winter-2016'
+        WHEN date >= '2016-03-31' AND date <= '2016-05-30' THEN 'Spring-2016'
+        WHEN date >= '2016-05-31' AND date <= '2016-09-22' THEN 'Summer-2016'
+        WHEN date >= '2016-09-23' AND date <= '2016-12-06' THEN 'Fall-2016'
+        WHEN date >= '2016-12-07' AND date <= '2017-03-30' THEN 'Winter-2017'
+        ELSE 'NA'
+    END AS 'season'
+FROM calendar
+WHERE available = 't'
+GROUP BY listing_id, season
+")
+
+# Order of the groups
+calendar_season$season <- factor(calendar_season$season,
+                                 levels = c("Winter-2016",
+                                            "Spring-2016",
+                                            "Summer-2016",
+                                            "Fall-2016",
+                                            "Winter-2017"))
+
+# Colors of the groups
+colors <- c("lightblue",
+            "lightgreen",
+            "darkorange",
+            "brown",
+            "lightblue")
+
+theme_set(theme_classic())
+
+# Season vs availability barplot
+barplot_season <- ggplot(calendar_season,
+                  aes(x = season,
+                      y = availability,
+                      fill = season)) +
+  geom_bar(stat = "identity") +
+  labs(x="Seasons", 
+       y="Availability (days)") +
+  theme(legend.position = "none") +
+  scale_fill_manual(values = colors)
+
+barplot_season
+```
+
+
+\newpage
+
+### Find an interesting or unexpected trend in the data and create a visualization to highlight it.
+
+I decided to investigate a little more about two factors that are related to the price: the type of room and the type of bed. For this, I created maps that would allow us to compare the location and price of each data set. This allows us to see if there are areas dominated by price, type of bed or type of room. Additionally, I carried out analyzes comparing the two data sets to see if there are significant differences between the prices of each one.
+
+Considering the first results, we can observe that Shared and Private room were cheaper than an Entire home/apt (with significant differences). With the map we can observe that there are more Entire homes/apts than Private or Shared rooms. Looking at the prices of Private and Shared rooms, we can conclude that the price is significantly different as well. In the second analysis we can visualize that a Real Bed is the most abundant type of bed, and It's price is significantly higher than the other options.
+
+With both results, if you want to save money and you don't care much about sharing with other people, the best option is to select a Shared or Private Room. The price isn't that different between options that are not a Real Bed, so if you want to save money and you don't mind sleeping in something not so comfortable you can chose any of the other options.
+
+```{r, echo=FALSE, warning=FALSE, message=FALSE}
+# Map contrasting price and room_type
+map_room_type <- qmplot(longitude,
+                        latitude,
+                        data = listings,
+                        maptype = "toner-lite",
+                        color = price,
+                        size = I(0)) +
+  scale_color_gradient(low = "blue", 
+                       high = "red") +
+  theme(legend.position = "bottom") +
+  facet_grid(~ room_type)
+
+map_room_type
+```
+
+
+```{r, echo=FALSE, warning=FALSE, message=FALSE}
+# Boxplot contrasting price and room_type
+# P-value groups
+p_value <- list(c("Entire home/apt", "Private room"), 
+                c("Entire home/apt", "Shared room"),
+                c("Private room", "Shared room"))
+
+# Colors
+colors <- c("blue",
+            "orange",
+            "red")
+
+theme_set(theme_bw())
+
+# 
+boxplot_room_type <- ggplot(listings,
+                            aes(x = room_type,
+                                y = price)) +
+  geom_boxplot(aes(color = room_type)) +
+  labs(x="Home type", 
+       y="Price ($)") +
+  theme(legend.position = "none") +
+  scale_color_manual(values = colors) +
+  stat_compare_means(comparisons = p_value,
+                     method = "wilcox.test",
+                     size = 2)
+
+boxplot_room_type
+```
+
+
+\newpage
+
+
+```{r, echo=FALSE, warning=FALSE, message=FALSE}
+# Map contrasting price and bed_type
+map_bed_type <- qmplot(longitude,
+                        latitude,
+                        data = listings,
+                        maptype = "toner-lite",
+                        color = price,
+                        size = I(0)) +
+  scale_color_gradient(low = "blue",
+                       high = "red") +
+  theme(legend.position = "bottom") +
+  facet_grid(~ bed_type)
+
+map_bed_type
+```
+
+
+```{r, echo=FALSE, warning=FALSE, message=FALSE}
+# Boxplot contrasting price and bed_type
+# P-value groups
+p_value <- list(c("Airbed", "Couch"),
+                c("Airbed", "Futon"),
+                c("Airbed", "Pull-out Sofa"),
+                c("Airbed", "Real Bed"),
+                c("Couch", "Futon"),
+                c("Couch", "Pull-out Sofa"),
+                c("Couch", "Real Bed"),
+                c("Futon", "Pull-out Sofa"),
+                c("Futon", "Real Bed"),
+                c("Pull-out Sofa", "Real Bed"))
+
+# Colors
+colors <- c("blue",
+            "orange",
+            "red",
+            "darkgreen",
+            "violet")
+
+theme_set(theme_bw())
+
+# 
+boxplot_bed_type <- ggplot(listings,
+                           aes(x = bed_type,
+                               y = price)) +
+  geom_boxplot(aes(color = bed_type)) +
+  labs(x="Bed type", 
+       y="Price ($)") +
+  theme(legend.position = "none") +
+  scale_color_manual(values = colors) +
+  stat_compare_means(comparisons = p_value,
+    method = "wilcox.test",
+    size = 2)
+
+boxplot_bed_type
+```

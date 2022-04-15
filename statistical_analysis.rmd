@@ -1,0 +1,163 @@
+---
+title: "Data Science and Analytics Assignment"
+author: "Luigui Gallardo-Becerra"
+date: "4/14/2022"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library("dplyr")
+library("ggpubr")
+library("optparse")
+library("ggplot2")
+library("reshape")
+require("gridExtra")
+library("ggpubr")
+```
+
+## Statistical analysis
+
+### Is there a statistically significant relationship between the cancellation policy and unit price?
+
+First, we need to import our data (listings.csv) into R.
+
+```{r, echo=FALSE, warning=FALSE, message=FALSE}
+# Data input (listings.csv)
+listings <- read.csv("dataset/listings.csv",
+                     header=TRUE)
+```
+
+Looking at the data, the "price" contains the "$" and "," symbols. It is easier to manage the data if we remove these character.
+
+```{r, echo=FALSE, warning=FALSE, message=FALSE}
+# Remotion of $ and , characters
+listings$price = gsub("\\$", "", listings$price)
+listings$price = gsub(",", "", listings$price)
+listings$price = as.numeric(listings$price)
+```
+
+Before evaluate the relationship between these variables, we must know the distribution of our data, and with it select a parametric or non-parametric method. To achieve this we can use the Shapiro-Wilk's test.
+
+```{r, echo=FALSE, warning=FALSE, message=FALSE}
+# Shapiro-Wilk's test on Price
+shapiro.test(listings$price)
+```
+
+From this result we can assume that the data is significantly different to the normal distribution (p-value < 0.05), so we must use non-parametric tests.
+
+Now we can answer the question. We can use a Kruskal-Wallis to compare the means between groups.
+
+```{r, echo=FALSE, warning=FALSE, message=FALSE}
+# Kruskal-Wallis to contrast between groups
+kruskal.test(data = listings, price ~ cancellation_policy)
+```
+With this result we can conclude that there are differences in the price between the cancellation policy groups.
+
+To know which groups differ from each other, we can use a Wilconxon's test. Additionally we can obtain a p-value adjustment with FDR (False Discovery Rate).
+
+```{r, echo=FALSE, warning=FALSE, message=FALSE}
+# Wilcoxon's to contrast between groups
+pairwise.wilcox.test(listings$price,
+                     listings$cancellation_policy,
+                     p.adjust.method = "fdr")
+```
+
+The p-values obtained were much lower than 0.05, so with this analysis we can conclude that the three groups means differ from each other.
+
+Additionally, we can obtain a boxplot to visualize these results.
+
+```{r, echo=FALSE, warning=FALSE, message=FALSE}
+# P-value groups
+p_value <- list(c("flexible", "moderate"), 
+                    c("flexible", "strict"),
+                    c("moderate", "strict"))
+# Colors
+colors <- c("blue",
+            "orange",
+            "red")
+
+theme_set(theme_bw())
+
+# Boxplot cancellation policy vs unit price
+boxplot <- ggplot(listings,
+                  aes(x = cancellation_policy,
+                      y = price)) +
+  geom_boxplot(aes(color = cancellation_policy)) +
+  labs(x="Cancellation Policy", 
+       y="Price ($)") +
+  theme(legend.position = "none") +
+  scale_color_manual(values = colors) +
+  stat_compare_means(comparisons = p_value,
+                     method = "wilcox.test",
+                     size = 2)
+
+boxplot
+```
+
+\newpage
+
+### Construct a linear model to evaluate how the price of a rental is influenced by unit size, the number of bedrooms, the number of bathrooms, and the maximum occupancy. What can you conclude about the influence of these attributes on price?
+
+We can use the same data that the previous analysis. Now we can make a Linear Model considering these factors.
+
+```{r, echo=FALSE, warning=FALSE, message=FALSE}
+linear_model <- lm(data=listings, price ~ square_feet + bedrooms + bathrooms + guests_included)
+
+summary(linear_model)
+```
+
+With these results we can conclude than there is a significant association between the price and the unit size (0.03), maximum occupancy (0.0005), number of bedrooms (8.7e-10). The number of bathrooms was not significantly associated with the price.
+
+Additionally, we can obtain plots to visualize these results.
+
+```{r, echo=FALSE, warning=FALSE, message=FALSE}
+theme_set(theme_bw())
+# Linear models of price vs square_feet + bedrooms + bathrooms + guests_included
+# Square feet
+lm_square_feet <- ggplot(listings,
+                         aes(y = price,
+                             x = square_feet)) +
+  geom_point() +
+  geom_smooth(method='lm') +
+  labs(x="Square feet", 
+       y="Price ($)") +
+  theme(legend.position = "none")
+
+# Bedrooms
+lm_bedrooms <- ggplot(listings,
+                      aes(y = price,
+                          x = bedrooms)) +
+  geom_point() +
+  geom_smooth(method='lm') +
+  labs(x="Number of bedrooms", 
+       y="Price ($)") +
+  theme(legend.position = "none")
+
+# Bathrooms
+lm_bathrooms <- ggplot(listings,
+                       aes(y = price,
+                           x = bathrooms)) +
+  geom_point() +
+  geom_smooth(method='lm') +
+  labs(x="Number of bathrooms", 
+       y="Price ($)") +
+  theme(legend.position = "none")
+
+# Guest included
+lm_guests_included <- ggplot(listings,
+                             aes(y = price,
+                                 x = guests_included)) +
+  geom_point() +
+  geom_smooth(method='lm') +
+  labs(x="Guest included", 
+       y="Price ($)") +
+  theme(legend.position = "none")
+
+# Final Plot
+ggarrange(lm_square_feet,
+          lm_bedrooms,
+          lm_bathrooms,
+          lm_guests_included,
+          ncol = 2, nrow = 2)
+```
