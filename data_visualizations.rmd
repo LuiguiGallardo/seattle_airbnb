@@ -125,11 +125,13 @@ boxplot_availability_365 <- ggMarginal(boxplot_availability_365,
 
 ```{r, echo=FALSE, warning=FALSE, message=FALSE}
 # Final Plot
-ggarrange(boxplot_availability_30,
+final_plot <- ggarrange(boxplot_availability_30,
           boxplot_availability_60,
           boxplot_availability_90,
           boxplot_availability_365,
           ncol = 2, nrow = 2)
+
+ggsave("./final_plot_1.svg")
 ```
 
 
@@ -274,6 +276,8 @@ map_bed_type <- qmplot(longitude,
   facet_grid(~ bed_type)
 
 map_bed_type
+
+ggsave("./map_bed_type.svg")
 ```
 
 
@@ -314,4 +318,7 @@ boxplot_bed_type <- ggplot(listings,
     size = 2)
 
 boxplot_bed_type
+
+ggsave("./boxplot_bed_type.svg")
+
 ```
