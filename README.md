@@ -1,6 +1,6 @@
 # Seattle Airbnb
 ##### Author: Luigui Gallardo
-##### Date: 04/14/2022
+##### Date: 03/14/2022
 
 The information of the task was obtained from: https://nutrisense.notion.site/nutrisense/Data-Science-and-Analytics-Assignment-v1-a7e447a46f9045b3a830f40a939efed3
 
